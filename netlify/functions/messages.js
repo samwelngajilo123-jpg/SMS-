@@ -4,6 +4,20 @@
 
 const { getStore } = require("@netlify/blobs");
 
+// Netlify Blobs is usually auto-configured, but some deploy methods don't
+// inject that context automatically — so we fall back to explicit credentials
+// (NETLIFY_SITE_ID + NETLIFY_API_TOKEN) if they're set.
+function messagesStore() {
+  if (process.env.NETLIFY_SITE_ID && process.env.NETLIFY_API_TOKEN) {
+    return getStore({
+      name: "ussd-messages",
+      siteID: process.env.NETLIFY_SITE_ID,
+      token: process.env.NETLIFY_API_TOKEN,
+    });
+  }
+  return getStore("ussd-messages");
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
     return { statusCode: 405, body: "Method Not Allowed" };
@@ -15,7 +29,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const store = getStore("ussd-messages");
+    const store = messagesStore();
     const { blobs } = await store.list();
 
     const messages = await Promise.all(

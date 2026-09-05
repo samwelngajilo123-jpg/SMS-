@@ -71,6 +71,17 @@ You don't have to set the SMS one if you only care about USSD-originated message
 
 No other third-party API is required — storage runs on Netlify Blobs, which is provisioned automatically when you deploy.
 
+## If you see a Netlify Blobs error
+
+If `/messages` returns something like *"The environment has not been configured to use Netlify Blobs"*, it means your deploy method didn't auto-inject the Blobs context. Fix it by adding two more environment variables in Netlify:
+
+| Variable | Where to find it |
+|---|---|
+| `NETLIFY_SITE_ID` | Site settings → General → Site details → **Site ID** |
+| `NETLIFY_API_TOKEN` | User settings (click your avatar) → Applications → **New access token** |
+
+Add both, then trigger a new deploy (Deploys → Trigger deploy → Deploy site). The functions will use these automatically as a fallback — no code changes needed.
+
 ## Setup
 
 **1. Environment variables** — copy `.env.example` to `.env`, then set the same values in Netlify's dashboard under *Site settings → Environment variables*:

@@ -19,6 +19,20 @@ const querystring = require("querystring");
 const { getStore } = require("@netlify/blobs");
 const africastalking = require("africastalking");
 
+// Netlify Blobs is usually auto-configured, but some deploy methods don't
+// inject that context automatically — so we fall back to explicit credentials
+// (NETLIFY_SITE_ID + NETLIFY_API_TOKEN) if they're set.
+function messagesStore() {
+  if (process.env.NETLIFY_SITE_ID && process.env.NETLIFY_API_TOKEN) {
+    return getStore({
+      name: "ussd-messages",
+      siteID: process.env.NETLIFY_SITE_ID,
+      token: process.env.NETLIFY_API_TOKEN,
+    });
+  }
+  return getStore("ussd-messages");
+}
+
 async function sendSms(to, message) {
   const AT = africastalking({
     apiKey: process.env.AT_API_KEY,
@@ -70,7 +84,7 @@ exports.handler = async (event) => {
     }
 
     try {
-      const store = getStore("ussd-messages");
+      const store = messagesStore();
       const record = {
         phoneNumber,
         message,
