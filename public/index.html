@@ -3,92 +3,468 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Africa's Talking SMS Sender</title>
+<title>USSD Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --ink: #0B1215;
+    --surface: #141D21;
+    --surface-raised: #1B262B;
+    --border: #24333A;
+    --text: #E9F2F0;
+    --text-muted: #7C9390;
+    --signal: #34D399;
+    --signal-dim: #1D6B54;
+    --copper: #F0985C;
+    --copper-dim: #7A4F30;
+    --danger: #E5735B;
+  }
+
   * { box-sizing: border-box; }
+
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
+    margin: 0;
+    background: var(--ink);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(52, 211, 153, 0.06), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(240, 152, 92, 0.05), transparent 45%);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  .shell {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  /* ---------- Header / flow diagram ---------- */
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+  }
+
+  .masthead h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .live-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+  .live-dot::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--signal);
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+  }
+
+  .subhead {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0 0 1.75rem;
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.1rem;
+    margin-bottom: 2.25rem;
+    overflow-x: auto;
+  }
+
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+    width: 108px;
+  }
+
+  .flow-node .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
+  }
+
+  .flow-node .icon svg { width: 20px; height: 20px; }
+
+  .flow-node .label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .flow-node .label strong {
+    display: block;
+    color: var(--text);
+    font-size: 0.76rem;
+    font-weight: 500;
+  }
+
+  .flow-arrow {
+    flex: 1;
+    min-width: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0 0.35rem;
+    margin-top: -1.4rem;
+  }
+
+  .flow-arrow svg { width: 100%; height: 10px; }
+  .flow-arrow span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--signal);
+    white-space: nowrap;
+  }
+
+  /* ---------- Section headers ---------- */
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+  }
+
+  .section-head h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
     margin: 0;
   }
-  .card {
-    background: #1e293b;
-    padding: 2rem;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  }
-  h1 { font-size: 1.25rem; margin-bottom: 1.25rem; color: #38bdf8; }
-  label { display: block; font-size: 0.85rem; margin-bottom: 0.3rem; color: #94a3b8; }
-  input, textarea {
-    width: 100%;
-    padding: 0.6rem;
-    margin-bottom: 1rem;
-    border-radius: 8px;
-    border: 1px solid #334155;
-    background: #0f172a;
-    color: #e2e8f0;
-    font-size: 0.95rem;
-  }
-  textarea { resize: vertical; min-height: 80px; }
-  button {
-    width: 100%;
-    padding: 0.7rem;
-    background: #38bdf8;
-    color: #0f172a;
-    font-weight: 600;
-    border: none;
-    border-radius: 8px;
+
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 7px;
     cursor: pointer;
-    font-size: 0.95rem;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
-  button:hover { background: #0ea5e9; }
-  #result {
-    margin-top: 1rem;
+  .refresh-btn:hover { border-color: var(--signal); color: var(--signal); }
+  .refresh-btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+  /* ---------- Message ticket ---------- */
+  .ticket {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--signal-dim);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.85rem;
+    animation: rise 0.35s ease both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticket { animation: none; }
+  }
+
+  .ticket-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .ticket-phone {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.92rem;
+    color: var(--signal);
+    letter-spacing: 0.02em;
+  }
+
+  .channel-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    text-transform: lowercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 5px;
+    margin-left: 0.5rem;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .channel-badge.ussd { border-color: var(--signal-dim); color: var(--signal); }
+  .channel-badge.sms { border-color: var(--copper-dim); color: var(--copper); }
+
+  .ticket-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .ticket-body {
+    font-size: 0.94rem;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .reply-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .reply-row input {
+    flex: 1;
+    background: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 0.55rem 0.7rem;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 0.85rem;
-    white-space: pre-wrap;
-    word-break: break-word;
+  }
+  .reply-row input:focus-visible {
+    outline: none;
+    border-color: var(--copper);
+  }
+  .reply-row input::placeholder { color: #4B5B60; }
+
+  .reply-row button {
+    background: var(--copper-dim);
+    border: 1px solid var(--copper);
+    color: #FFE4CC;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.83rem;
+    padding: 0.55rem 1.05rem;
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+  }
+  .reply-row button:hover { background: var(--copper); color: var(--ink); }
+  .reply-row button:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+
+  .reply-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    min-height: 1em;
+  }
+  .reply-status.ok { color: var(--signal); }
+  .reply-status.err { color: var(--danger); }
+
+  /* ---------- Empty / loading ---------- */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  .empty-state .glyph {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.4rem;
+    color: var(--signal-dim);
+    display: block;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.15em;
+  }
+
+  footer {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #4B5B60;
+    display: flex;
+    justify-content: space-between;
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1>📲 Send SMS via Africa's Talking</h1>
-    <label for="to">Phone number (e.g. +2557XXXXXXXX)</label>
-    <input type="text" id="to" placeholder="+2557XXXXXXXX" />
+<div class="shell">
 
-    <label for="message">Message</label>
-    <textarea id="message" placeholder="Type your message..."></textarea>
+  <div class="masthead">
+    <h1>USSD Console</h1>
+    <span class="live-dot">listening</span>
+  </div>
+  <p class="subhead">Every message below was typed on an ordinary phone — no internet, no app, no smartphone required. Reply and it lands as SMS.</p>
 
-    <button onclick="sendSms()">Send SMS</button>
-    <div id="result"></div>
+  <div class="flow">
+    <div class="flow-node">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#7C9390" stroke-width="1.6"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="18" r="0.6" fill="#7C9390"/></svg>
+      </div>
+      <div class="label"><strong>Phone</strong>dials *483#</div>
+    </div>
+
+    <div class="flow-arrow">
+      <svg viewBox="0 0 100 10" preserveAspectRatio="none"><line x1="0" y1="5" x2="100" y2="5" stroke="#24333A" stroke-width="1.5"/></svg>
+      <span>USSD</span>
+    </div>
+
+    <div class="flow-node">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="1.6"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      </div>
+      <div class="label"><strong>AT Cloud</strong>routes request</div>
+    </div>
+
+    <div class="flow-arrow">
+      <svg viewBox="0 0 100 10" preserveAspectRatio="none"><line x1="0" y1="5" x2="100" y2="5" stroke="#24333A" stroke-width="1.5"/></svg>
+      <span>POST</span>
+    </div>
+
+    <div class="flow-node">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#F0985C" stroke-width="1.6"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div class="label"><strong>This app</strong>replies + logs</div>
+    </div>
   </div>
 
-  <script>
-    async function sendSms() {
-      const to = document.getElementById('to').value.trim();
-      const message = document.getElementById('message').value.trim();
-      const resultEl = document.getElementById('result');
-      resultEl.textContent = 'Sending...';
+  <div class="section-head">
+    <h2>Incoming</h2>
+    <button class="refresh-btn" onclick="loadMessages()">↻ refresh</button>
+  </div>
 
-      try {
-        const res = await fetch('/.netlify/functions/send-sms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to, message })
-        });
-        const data = await res.json();
-        resultEl.textContent = JSON.stringify(data, null, 2);
-      } catch (err) {
-        resultEl.textContent = 'Error: ' + err.message;
+  <div id="list">
+    <div class="empty-state"><span class="glyph">• • •</span>Reading the log…</div>
+  </div>
+
+  <footer>
+    <span>ussd-console</span>
+    <span id="count-footer">0 messages</span>
+  </footer>
+</div>
+
+<script>
+  async function loadMessages() {
+    const list = document.getElementById('list');
+    const countFooter = document.getElementById('count-footer');
+    list.innerHTML = '<div class="empty-state"><span class="glyph">• • •</span>Reading the log…</div>';
+    try {
+      const res = await fetch('/.netlify/functions/messages');
+      const data = await res.json();
+
+      if (!data.messages || data.messages.length === 0) {
+        list.innerHTML = '<div class="empty-state"><span class="glyph">— · —</span>No messages yet. They\\'ll appear here the moment someone dials in.</div>';
+        countFooter.textContent = '0 messages';
+        return;
       }
+
+      countFooter.textContent = data.messages.length + (data.messages.length === 1 ? ' message' : ' messages');
+
+      list.innerHTML = data.messages.map((m, i) => `
+        <div class="ticket">
+          <div class="ticket-top">
+            <span>
+              <span class="ticket-phone">${escapeHtml(m.phoneNumber)}</span>
+              <span class="channel-badge ${m.channel === 'sms' ? 'sms' : 'ussd'}">${m.channel === 'sms' ? 'sms' : 'ussd'}</span>
+            </span>
+            <span class="ticket-time">${formatTime(m.receivedAt)}</span>
+          </div>
+          <div class="ticket-body">${escapeHtml(m.message)}</div>
+          <div class="reply-row">
+            <input type="text" id="reply-${i}" placeholder="Reply by SMS…" onkeydown="if(event.key==='Enter') sendReply('${escapeAttr(m.phoneNumber)}', ${i})" />
+            <button onclick="sendReply('${escapeAttr(m.phoneNumber)}', ${i})">Send</button>
+          </div>
+          <div class="reply-status" id="status-${i}"></div>
+        </div>
+      `).join('');
+    } catch (err) {
+      list.innerHTML = '<div class="empty-state"><span class="glyph">! ! !</span>Could not reach the log: ' + escapeHtml(err.message) + '</div>';
     }
-  </script>
+  }
+
+  async function sendReply(phoneNumber, i) {
+    const input = document.getElementById('reply-' + i);
+    const statusEl = document.getElementById('status-' + i);
+    const message = input.value.trim();
+    if (!message) return;
+
+    statusEl.className = 'reply-status';
+    statusEl.textContent = 'sending…';
+
+    try {
+      const res = await fetch('/.netlify/functions/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phoneNumber, message })
+      });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.className = 'reply-status ok';
+        statusEl.textContent = '✓ delivered to gateway';
+        input.value = '';
+      } else {
+        statusEl.className = 'reply-status err';
+        statusEl.textContent = '✕ ' + (data.error || 'failed to send');
+      }
+    } catch (err) {
+      statusEl.className = 'reply-status err';
+      statusEl.textContent = '✕ ' + err.message;
+    }
+  }
+
+  function formatTime(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    return sameDay
+      ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  function escapeAttr(str) {
+    return (str ?? '').replace(/'/g, "\\\\'");
+  }
+
+  loadMessages();
+</script>
 </body>
 </html>

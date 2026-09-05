@@ -1,6 +1,6 @@
 // netlify/functions/send-sms.js
-// POST { "to": "+2557XXXXXXXX" or ["+255...", "+255..."], "message": "Hello" }
-// Optional header: x-send-secret: <SEND_SMS_SECRET>  (only if you set that env var)
+// POST { "to": "+2557XXXXXXXX", "message": "Reply text" }
+// Optional header: x-send-secret: <SEND_SMS_SECRET>
 
 const africastalking = require("africastalking");
 
@@ -9,7 +9,6 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  // Optional simple auth guard
   const secret = process.env.SEND_SMS_SECRET;
   if (secret && event.headers["x-send-secret"] !== secret) {
     return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized" }) };
@@ -35,8 +34,6 @@ exports.handler = async (event) => {
     username: process.env.AT_USERNAME,
   });
 
-  const sms = AT.SMS;
-
   const options = {
     to: Array.isArray(to) ? to : [to],
     message,
@@ -46,16 +43,10 @@ exports.handler = async (event) => {
   }
 
   try {
-    const result = await sms.send(options);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true, result }),
-    };
+    const result = await AT.SMS.send(options);
+    return { statusCode: 200, body: JSON.stringify({ success: true, result }) };
   } catch (error) {
     console.error("AT send error:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, error: error.message }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) };
   }
 };

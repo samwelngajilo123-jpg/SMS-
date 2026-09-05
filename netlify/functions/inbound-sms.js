@@ -1,42 +1,49 @@
 // netlify/functions/inbound-sms.js
-// Set this URL as your "Callback URL" in the Africa's Talking dashboard
-// (SMS > SMS Callback URL): https://<your-site>.netlify.app/.netlify/functions/inbound-sms
 //
-// AT posts application/x-www-form-urlencoded data with fields like:
-// from, to, text, date, id, linkId, networkCode
+// Set this as your "Callback URL" in the Africa's Talking dashboard under
+// SMS settings: https://<your-site>.netlify.app/.netlify/functions/inbound-sms
+//
+// This captures any SMS sent directly to your Africa's Talking number and
+// logs it into the same store the dashboard reads from — so the dashboard
+// shows every message that becomes an SMS, whether it started as a USSD
+// session or arrived as a normal text.
 
 const querystring = require("querystring");
+const { getStore } = require("@netlify/blobs");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  let data;
   const contentType = event.headers["content-type"] || "";
-
+  let data;
   try {
-    if (contentType.includes("application/json")) {
-      data = JSON.parse(event.body || "{}");
-    } else {
-      // Africa's Talking sends form-encoded by default
-      data = querystring.parse(event.body || "");
-    }
+    data = contentType.includes("application/json")
+      ? JSON.parse(event.body || "{}")
+      : querystring.parse(event.body || "");
   } catch (e) {
-    console.error("Failed to parse inbound payload:", e);
+    console.error("Failed to parse inbound SMS payload:", e);
     return { statusCode: 400, body: "Bad Request" };
   }
 
-  console.log("Inbound SMS received:", data);
+  // Africa's Talking sends: from, to, text, date, id, linkId, networkCode
+  const { from, text, id } = data;
 
-  // TODO: plug in your own logic here, e.g.:
-  // - save to a database (Netlify doesn't persist state between calls)
-  // - forward to Slack/email
-  // - trigger an auto-reply via the send-sms function
+  try {
+    const store = getStore("ussd-messages");
+    const record = {
+      phoneNumber: from,
+      message: text,
+      sessionId: id || null,
+      channel: "sms",
+      receivedAt: new Date().toISOString(),
+    };
+    await store.setJSON(`${Date.now()}-${id || "sms"}`, record);
+  } catch (err) {
+    console.error("Failed to store inbound SMS:", err);
+  }
 
-  // Africa's Talking just needs a 200 response to acknowledge receipt
-  return {
-    statusCode: 200,
-    body: "OK",
-  };
+  // AT just needs a 200 to acknowledge receipt
+  return { statusCode: 200, body: "OK" };
 };

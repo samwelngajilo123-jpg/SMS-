@@ -5,14 +5,3 @@
 
 [functions]
   node_bundler = "esbuild"
-
-# Optional friendly redirects (uncomment/edit as needed)
-# [[redirects]]
-#   from = "/api/send-sms"
-#   to = "/.netlify/functions/send-sms"
-#   status = 200
-
-# [[redirects]]
-#   from = "/api/inbound-sms"
-#   to = "/.netlify/functions/inbound-sms"
-#   status = 200

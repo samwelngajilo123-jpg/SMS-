@@ -1,88 +1,120 @@
-# Africa's Talking SMS — Netlify Ready
+# USSD Console — Africa's Talking + Netlify
 
-Send and receive SMS using the Africa's Talking API, deployed as Netlify Functions.
+Lets anyone reach you from an ordinary phone — no internet, no app, no smartphone.
+They dial a USSD code, type a message on their keypad, it's forwarded to you as a
+real SMS, and it lands in this web app's dashboard. You reply, and it goes out as
+a real SMS too.
 
-## What's inside
+## Architecture
 
 ```
-at-sms-netlify/
-├── netlify.toml                       # Netlify build/functions config
-├── package.json
-├── .env.example                       # copy to .env / set in Netlify UI
-├── public/
-│   └── index.html                     # simple test page to send SMS
-└── netlify/functions/
-    ├── send-sms.js                    # POST -> sends an SMS
-    ├── inbound-sms.js                 # webhook: receives incoming SMS
-    └── delivery-report.js             # webhook: receives delivery status
+  Phone                Africa's Talking          This app (Netlify)
+┌─────────┐               API cloud              ┌──────────────┐
+│  *483#  │  1. dials    ┌──────────┐  2. POST    │  /ussd       │
+│         │ ───────────► │  routes  │ ──────────► │  (function)  │
+│         │  4. menu     │ request  │  3. text    │              │
+│         │ ◄─────────── │          │ ◄────────── │  returns     │
+└─────────┘               └──────────┘             │  CON / END   │
+                                                    └──────┬───────┘
+                                                           │ saves to
+                                                           ▼
+                                                    ┌──────────────┐
+                                                    │ Netlify Blobs│
+                                                    └──────┬───────┘
+                                                           │ read by
+                                                           ▼
+                                              ┌──────────────────────┐
+                                              │  Dashboard (browser) │
+                                              │  view + reply by SMS │
+                                              └──────────────────────┘
 ```
 
-## 1. Get Africa's Talking credentials
+## Folder structure
 
-1. Sign up at https://account.africastalking.com/ (use **Sandbox** for free testing).
-2. Grab your **Username** (`sandbox` for the sandbox app) and **API Key**.
-3. In the sandbox, add a test phone number under Settings > Simulator to receive real SMS while testing.
-
-## 2. Configure environment variables
-
-Copy `.env.example` to `.env` for local dev:
-
-```bash
-cp .env.example .env
+```
+africastalking-ussd-app/
+├── netlify.toml                     # tells Netlify where functions + site files live
+├── package.json                     # dependencies
+├── .env.example                     # copy to .env — your API keys go here
+│
+├── public/                          # ─── "Your Web Application" in the diagram
+│   └── index.html                   # the dashboard — view messages, send replies
+│
+└── netlify/functions/                # ─── the API layer between AT and your data
+    ├── ussd.js                      # ★ main endpoint — AT calls this on every menu step,
+    │                                 #   forwards the finished message to ADMIN_PHONE_NUMBER as SMS
+    ├── inbound-sms.js               # catches SMS sent directly to your AT number
+    ├── messages.js                  # dashboard calls this to read the message log
+    └── send-sms.js                  # dashboard calls this to send an SMS reply
 ```
 
-Fill in:
-- `AT_USERNAME` — your AT username (`sandbox` or your live app username)
-- `AT_API_KEY` — your API key
-- `AT_SENDER_ID` — optional, your approved shortcode/sender ID (leave blank for sandbox)
-- `SEND_SMS_SECRET` — optional shared secret to protect the send endpoint
+## The two callback URLs
 
-**On Netlify**, don't upload `.env` — instead set these same variables under:
-Site settings > Environment variables.
+Africa's Talking needs **two** separate callbacks configured, since USSD and SMS are different products in their dashboard:
 
-## 3. Install & run locally
+| Setting | URL | Where in AT dashboard |
+|---|---|---|
+| USSD Callback URL | `https://<your-site>.netlify.app/.netlify/functions/ussd` | USSD → your service code |
+| SMS Callback URL | `https://<your-site>.netlify.app/.netlify/functions/inbound-sms` | SMS → Callback URLs |
+
+You don't have to set the SMS one if you only care about USSD-originated messages — it's there so any SMS sent straight to your AT number also shows up in the same dashboard.
+
+## APIs you'll need
+
+| What | Where to get it | Used for |
+|---|---|---|
+| **Africa's Talking account** | https://account.africastalking.com/ | Sandbox app is free for testing |
+| **Username + API Key** | AT dashboard → Settings → API Key | Authenticates all requests (`AT_USERNAME`, `AT_API_KEY`) |
+| **USSD service/short code** | AT dashboard → USSD | The code people dial (sandbox gives you a test code immediately; a real one reachable by the public requires applying for a shared or dedicated code) |
+| **SMS product (for replies)** | Included with your AT account | Sends your reply as a real SMS back to the phone that dialed in |
+| **Netlify account** | https://app.netlify.com | Hosts the functions + dashboard, and the Blobs store (no separate database needed) |
+
+No other third-party API is required — storage runs on Netlify Blobs, which is provisioned automatically when you deploy.
+
+## Setup
+
+**1. Environment variables** — copy `.env.example` to `.env`, then set the same values in Netlify's dashboard under *Site settings → Environment variables*:
+
+```
+AT_USERNAME=sandbox
+AT_API_KEY=your_api_key_here
+AT_SENDER_ID=              # optional
+ADMIN_PHONE_NUMBER=        # receives an SMS every time someone submits via USSD
+SEND_SMS_SECRET=           # optional — protects the reply endpoint
+DASHBOARD_SECRET=          # optional — protects the messages endpoint
+```
+
+**2. Install & run locally**
 
 ```bash
 npm install
-npm install -g netlify-cli   # if you don't have it
+npm install -g netlify-cli
 netlify dev
 ```
 
-This serves `public/index.html` and your functions at `http://localhost:8888`.
+**3. Deploy**
 
-## 4. Deploy to Netlify
-
-**Option A — CLI**
 ```bash
 netlify deploy --prod
 ```
+or connect the repo through the Netlify dashboard (build command `npm install`, publish directory `public`, functions directory `netlify/functions` — already set in `netlify.toml`).
 
-**Option B — Git**
-1. Push this folder to a GitHub repo.
-2. In Netlify: "Add new site" > "Import an existing project" > pick the repo.
-3. Build command: `npm install` — Publish directory: `public` — Functions directory: `netlify/functions` (already set in `netlify.toml`).
-4. Add the environment variables from step 2 in the Netlify dashboard.
-5. Deploy.
+**4. Point Africa's Talking at your app**
 
-## 5. Wire up Africa's Talking callbacks
-
-In your AT dashboard, under your app's **SMS** settings:
-- **Callback URL** (incoming SMS): `https://<your-site>.netlify.app/.netlify/functions/inbound-sms`
-- **Delivery Report Callback URL**: `https://<your-site>.netlify.app/.netlify/functions/delivery-report`
-
-## 6. Test sending
-
-Visit `https://<your-site>.netlify.app/` and use the form, or:
-
-```bash
-curl -X POST https://<your-site>.netlify.app/.netlify/functions/send-sms \
-  -H "Content-Type: application/json" \
-  -H "x-send-secret: change_me" \
-  -d '{"to": "+2557XXXXXXXX", "message": "Hello from Netlify + Africa'\''s Talking"}'
+AT dashboard → **USSD** → your service code → Callback URL:
 ```
+https://<your-site>.netlify.app/.netlify/functions/ussd
+```
+
+**5. Test**
+
+Dial your sandbox code in AT's Simulator, type a message, then open `https://<your-site>.netlify.app/` — it appears in the console. Type a reply and it sends as SMS.
+
+## Editing the menu
+
+All menu logic lives in `netlify/functions/ussd.js`. Africa's Talking sends the whole conversation so far in one `text` field (e.g. `"1*Hello"`), so the function reads that string to decide what screen to show next. The comments in the file walk through exactly how that works — extend the `if/else` chain there to add more options or steps.
 
 ## Notes
 
-- Netlify Functions are stateless — `inbound-sms.js` currently just logs incoming messages. Plug in a database (e.g. FaunaDB, Supabase, Airtable) if you need to persist/reply to them.
-- Sandbox SMS only reaches numbers registered in your AT simulator. Go live (paid) to reach real subscribers broadly.
-- Logs for incoming webhooks show up in Netlify's function logs (Site > Functions > Function name > Logs).
+- USSD sessions are short-lived and stateless — the entire back-and-forth is reconstructed from the `text` field on each request, by design of the protocol.
+- A sandbox USSD code only works through AT's Simulator. Going live for real phones requires applying for a shared or dedicated code with Africa's Talking, which involves their own review process.
